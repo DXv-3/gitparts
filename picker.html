@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<meta name="color-scheme" content="dark"/>
+<link rel="icon" href="data:,"/>
+<title>gitparts picker — pick the files, ship the bundle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700;9..144,900&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Kage Kit tokens — variable overrides only, zero new hex (fleet law).
+   Canonical set from send-deck; --kage-* is the seam render.py already uses. */
+:root{
+  --kage-ink:#05070a; --kage-ink-2:#0a0e12; --kage-bone:#dfe7e0; --kage-bone-dim:#aab4ad;
+  --kage-muted:#78837c; --kage-line:rgba(223,231,224,.13);
+  --kage-vermilion:#e0231c; --kage-gold:#c9a24a; --kage-success:#7ee2a8;
+  /* page aliases: every layout var below maps onto a token (color-mix = token math, not new hex) */
+  --bg:var(--kage-ink); --surface:var(--kage-ink-2);
+  --surface2:color-mix(in srgb, var(--kage-bone) 7%, var(--kage-ink-2));
+  --ink:var(--kage-bone); --muted:var(--kage-bone-dim); --line:var(--kage-line);
+  --accent:var(--kage-vermilion); --accent-ink:var(--kage-ink);
+  --amber:var(--kage-gold);
+  --red:var(--kage-vermilion);
+  --red-bg:color-mix(in srgb, var(--kage-vermilion) 14%, var(--kage-ink));
+  --ok:var(--kage-success);
+  --ok-bg:color-mix(in srgb, var(--kage-success) 10%, var(--kage-ink));
+  --radius:18px; --radius-sm:12px;
+  --shadow:0 10px 30px rgba(0,0,0,.45);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans",system-ui,sans-serif;line-height:1.5;color-scheme:dark}
+a{color:var(--accent);text-decoration:none} a:hover{text-decoration:underline}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+.wrap{max-width:1180px;margin:0 auto;padding:28px 18px 56px}
+.hero{padding:10px 0 22px}
+.hero h1{font-family:Fraunces,serif;font-weight:900;font-size:clamp(38px,6vw,64px);line-height:.95;letter-spacing:-.02em;margin:0 0 12px}
+.hero h1 em{font-style:normal;color:var(--accent)}
+.hero h1 b{color:var(--accent)}
+.hero p{font-size:18px;color:var(--muted);max-width:680px;margin:0}
+.faces{margin-top:10px;font-size:14px}
+.pill{display:inline-flex;gap:8px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:600;margin-bottom:16px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--accent)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px}
+.loader{display:grid;grid-template-columns:1fr auto;gap:12px}
+@media(max-width:640px){.loader{grid-template-columns:1fr}}
+label{font-size:13px;font-weight:700;letter-spacing:.02em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:7px}
+input[type=text],input[type=number],input[type=search]{width:100%;padding:13px 14px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-size:15px;outline:none}
+input:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
+.btn{appearance:none;border:0;cursor:pointer;border-radius:12px;padding:13px 18px;font-weight:700;font-size:15px;background:var(--accent);color:var(--accent-ink);white-space:nowrap}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.secondary{background:var(--surface2);color:var(--ink);border:1px solid var(--line)}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.small{padding:8px 11px;font-size:13px;border-radius:9px}
+.examples{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;align-items:center}
+.examples span{font-size:13px;color:var(--muted);font-weight:600}
+.chip{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:999px;padding:7px 11px;font-size:13px;cursor:pointer;font-family:"IBM Plex Mono",monospace}
+.chip:hover{border-color:var(--accent)}
+.status{margin-top:14px;font-size:14px;border-radius:12px;padding:12px 14px;display:none}
+.status.show{display:block}
+.status.err{background:var(--red-bg);color:var(--red);border:1px solid color-mix(in srgb,var(--red) 30%,transparent)}
+.status.ok{background:var(--ok-bg);color:var(--ink);border:1px solid color-mix(in srgb,var(--ok) 30%,transparent)}
+.status.info{background:var(--surface2);border:1px solid var(--line)}
+.budget{position:sticky;top:12px;z-index:20;margin:18px 0}
+.budget-inner{display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between}
+.budget-num{font-family:"IBM Plex Mono",monospace;font-size:22px;font-weight:600}
+.budget-num small{font-size:13px;color:var(--muted)}
+.bar{height:10px;background:var(--surface2);border-radius:999px;overflow:hidden;flex:1;min-width:180px}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:999px;transition:width .35s ease,background .2s;width:0%}
+.bar.over i{background:var(--red)}
+.budget-controls{display:flex;gap:10px;align-items:end;flex-wrap:wrap}
+.budget-controls .field{width:130px}
+input[type=range]{width:180px;accent-color:var(--accent)}
+.grid{display:grid;grid-template-columns:1.08fr .92fr;gap:18px;align-items:start}
+@media(max-width:900px){.grid{grid-template-columns:1fr}}
+.section-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:6px}
+.section-head h2{font-family:Fraunces,serif;font-size:26px;margin:0;line-height:1}
+.section-head p{margin:4px 0 0;color:var(--muted);font-size:14px}
+.count{font-family:"IBM Plex Mono",monospace;font-size:13px;background:var(--surface2);padding:5px 9px;border-radius:999px;white-space:nowrap}
+.toolbar{display:flex;gap:8px;margin:14px 0}
+.toolbar input{flex:1}
+.filelist{max-height:560px;overflow:auto;border:1px solid var(--line);border-radius:14px}
+.filerow{display:flex;gap:10px;align-items:center;padding:11px 12px;border-bottom:1px solid var(--line);background:var(--surface)}
+.filerow:last-child{border-bottom:0}
+.filerow:hover{background:var(--surface2)}
+.filerow.added{opacity:.55}
+.filerow .path{flex:1;min-width:0}
+.filerow .path b{display:block;font-family:"IBM Plex Mono",monospace;font-size:13.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.filerow .path span{font-size:12px;color:var(--muted);font-family:"IBM Plex Mono",monospace}
+.addbtn{width:36px;height:36px;border-radius:9px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-size:20px;line-height:1;cursor:pointer;flex:none}
+.addbtn:hover{border-color:var(--accent);color:var(--accent)}
+.queue{display:flex;flex-direction:column;gap:10px;min-height:120px}
+.qitem{display:flex;gap:10px;align-items:flex-start;background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:12px;animation:pop .25s ease both}
+@keyframes pop{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.qitem.dragging{opacity:.45}
+.qitem.dragover{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 25%,transparent)}
+.handle{cursor:grab;font-size:18px;color:var(--muted);padding:2px 2px;touch-action:none;user-select:none}
+.num{width:28px;height:28px;border-radius:50%;background:var(--ink);color:var(--bg);display:grid;place-items:center;font-size:13px;font-weight:700;flex:none;font-family:"IBM Plex Mono",monospace}
+.qmain{flex:1;min-width:0}
+.qmain b{font-family:"IBM Plex Mono",monospace;font-size:13.5px;word-break:break-all;display:block}
+.qmeta{font-size:12.5px;color:var(--muted);margin-top:3px}
+.qmeta a{font-family:"IBM Plex Mono",monospace;font-size:12px}
+.qactions{display:flex;gap:4px;flex:none}
+.iconbtn{width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.empty{border:1.5px dashed var(--line);border-radius:14px;padding:22px;text-align:center;color:var(--muted)}
+.empty strong{color:var(--ink);display:block;font-size:16px;margin-bottom:4px}
+.export{margin-top:18px}
+.export-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+pre.preview{margin:14px 0 0;background:var(--kage-ink);color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:16px;overflow:auto;max-height:360px;font-size:12.5px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
+.note{font-size:13px;color:var(--muted);margin-top:12px}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--bg);padding:11px 16px;border-radius:999px;font-weight:600;font-size:14px;opacity:0;pointer-events:none;transition:.25s;z-index:50}
+.toast.show{opacity:1;transform:translateX(-50%)}
+.foot{margin-top:22px;color:var(--muted);font-size:13px;text-align:center}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <div class="pill"><span class="dot"></span> Public GitHub repos only · client-side, no server</div>
+    <h1>git<b>parts</b> picker — pick the files.<br><em>Ship the bundle.</em></h1>
+    <p>The hand-pick face of gitparts: choose the files worth keeping, drag them into the order you want them read, and export a single bundle that stays inside your token budget.</p>
+    <p class="faces">Want the judged strip instead — stealable parts with file:line proof? <a href="https://macbook-air-1.tailcb5639.ts.net/gitparts">gitparts judge (runs on my Mac)</a>, or once a repo is loaded, hit <em>auto-strip</em>.</p>
+  </header>
+
+  <!-- LOADER -->
+  <section class="card" aria-label="Load a repository">
+    <div class="loader">
+      <div>
+        <label for="repoInput">GitHub repository</label>
+        <input type="text" id="repoInput" placeholder="https://github.com/owner/repo  —  or just  owner/repo" autocomplete="off" spellcheck="false">
+      </div>
+      <div style="align-self:end"><button class="btn" id="loadBtn">Load files →</button></div>
+    </div>
+    <div class="examples">
+      <span>Try:</span>
+      <button class="chip" data-example="sindresorhus/is-plain-obj">sindresorhus/is-plain-obj</button>
+      <button class="chip" data-example="chalk/chalk">chalk/chalk</button>
+      <button class="chip" data-example="expressjs/express">expressjs/express</button>
+      <button class="chip" data-example="facebook/react">facebook/react</button>
+    </div>
+    <div id="status" class="status" role="status" aria-live="polite"></div>
+    <p class="note" id="repoMeta" style="display:none"></p>
+  </section>
+
+  <!-- BUDGET -->
+  <section class="card budget" aria-label="Token budget">
+    <div class="budget-inner">
+      <div>
+        <label style="margin:0 0 2px">Token budget — applied to the export</label>
+        <div class="budget-num"><span id="usedTokens">0</span> <small>/</small> <span id="budgetLabel">32,000</span> <small>tokens · <span id="remainingLabel">32,000 left</span></small></div>
+      </div>
+      <div class="bar" id="barWrap"><i id="barFill"></i></div>
+      <div class="budget-controls">
+        <input type="range" id="budgetRange" min="4000" max="200000" step="1000" value="32000" aria-label="Token budget slider">
+        <div class="field"><input type="number" id="budgetInput" min="500" max="1000000" step="500" value="32000" aria-label="Token budget number"></div>
+      </div>
+    </div>
+    <p class="note" id="budgetWarn" style="display:none;color:var(--red);font-weight:600;margin-bottom:0">Over budget — export is paused until you remove files or raise the budget. The budget you see here is the exact budget written into the bundle.</p>
+  </section>
+
+  <!-- WORKSPACE -->
+  <div class="grid">
+    <section class="card" aria-label="Repository files">
+      <div class="section-head"><div><h2>1 · Choose files</h2><p id="fileHint">Load a repo to browse its files.</p></div><span class="count" id="fileCount">0 files</span></div>
+      <div class="toolbar">
+        <input type="search" id="searchInput" placeholder="Filter by path…  e.g.  src/  or  .ts" disabled>
+        <button class="btn secondary small" id="clearSearchBtn" disabled>Clear</button>
+      </div>
+      <div class="filelist" id="fileList"><div class="empty"><strong>No repo loaded yet</strong>Paste a link above and hit Load files. Text files appear here with size and an estimated token count.</div></div>
+      <p class="note">Token counts are estimates (≈ 4 characters per token — the same heuristic the fleet's freellmapi gateway uses) until a file is added — then they're counted from the actual file contents. Binary and oversized files are flagged and can't be added.</p>
+    </section>
+
+    <section class="card" aria-label="Your bundle">
+      <div class="section-head"><div><h2>2 · Order your bundle</h2><p>Drag by the handle, or use ↑ ↓. This order is the export order.</p></div><span class="count" id="queueCount">0 picked</span></div>
+      <div style="height:14px"></div>
+      <div class="queue" id="queue"><div class="empty" id="queueEmpty"><strong>Nothing picked yet</strong>Add files from the list on the left. Every pick keeps a link back to its exact path and lines.</div></div>
+      <div class="export-actions" style="margin-top:14px">
+        <button class="btn ghost small" id="clearAllBtn" disabled>Clear all</button>
+      </div>
+
+      <div class="export">
+        <div class="section-head"><div><h2>3 · Export</h2><p>Only the files above, in that order. Nothing else goes in.</p></div></div>
+        <div class="export-actions">
+          <button class="btn" id="copyBtn" disabled>Copy bundle</button>
+          <button class="btn secondary" id="downloadBtn" disabled>Download .md</button>
+          <button class="btn ghost" id="previewBtn" disabled>Preview</button>
+        </div>
+        <pre class="preview" id="preview" style="display:none"></pre>
+        <p class="note">Each file in the bundle is headed with its repo path and a GitHub link to its exact lines — e.g. <span class="mono">src/index.js#L1-L84</span> — so anyone reading it can jump straight to the source.</p>
+      </div>
+    </section>
+  </div>
+
+  <p class="foot">Works entirely in your browser against the public GitHub API — no sign-in, no server. Unauthenticated GitHub requests are rate-limited (about 60/hour), so very large repos may need a retry later. Private repos return “not found” and are out of scope. Binary pre-filter borrowed from the gitparts engine; fetch-time content sniffing (NUL byte + printable ratio) is the real gate.</p>
+</div>
+<div class="toast" id="toast">Copied</div>
+
+<script>
+/* == pure layer — no DOM, unit-tested by smoke section 8 == */
+function fmt(n){return n.toLocaleString("en-US")}
+function estTokensFromSize(size){return Math.max(1,Math.ceil((size||0)/4))}
+function tokensFromText(t){return Math.max(1,Math.ceil(t.length/4))}
+function langFromPath(p){var ext=(p.split(".").pop()||"").toLowerCase();var map={js:"javascript",jsx:"jsx",ts:"typescript",tsx:"tsx",py:"python",rb:"ruby",go:"go",rs:"rust",java:"java",c:"c",cpp:"cpp",h:"c",css:"css",scss:"scss",html:"html",json:"json",md:"markdown",yml:"yaml",yaml:"yaml",sh:"bash",toml:"toml",php:"php",swift:"swift",kt:"kotlin"};return map[ext]||""}
+/* Binary pre-filter = gitparts engine.py BIN_EXT (grafted, kept in sync by hand).
+   The fetch-time content sniff in looksBinary() stays the real gate. */
+var BIN_EXT=[".png",".jpg",".jpeg",".gif",".webp",".ico",".icns",".pdf",".zip",".gz",".tar",".tgz",".bz2",".7z",".ttf",".otf",".woff",".woff2",".eot",".mp4",".mov",".mp3",".wav",".ogg",".a",".so",".dylib",".dll",".exe",".bin",".jar",".class",".pyc",".o",".obj",".db",".sqlite",".parquet",".onnx",".safetensors"];
+function isLikelyBinary(p,size){
+  var ext=(p.split(".").pop()||"").toLowerCase();
+  if(p==="package-lock.json"||p.endsWith("/package-lock.json")) return false;
+  return BIN_EXT.indexOf("."+ext)!==-1 || size>512000;
+}
+/* Content gate: NUL byte kills instantly; beyond that, a real text file is
+   >90% printable over its first 8KB (control chars other than \t\n\r, DEL,
+   and C1 range all count against it). Catches base64-blobbed "text" files
+   and mislabeled binaries the extension filter misses. */
+function looksBinary(t){
+  if(t.indexOf("\u0000")!==-1) return true;
+  var s=t.slice(0,8000),bad=0;
+  for(var i=0;i<s.length;i++){
+    var c=s.charCodeAt(i);
+    if(c<9||(c>13&&c<32)||c===127||(c>126&&c<160)) bad++;
+  }
+  return s.length>0 && bad/s.length>0.1;
+}
+/* Export fence: a file containing ``` would break a 3-backtick fence — use a
+   fence one run longer than the longest backtick run in the content. */
+function fenceFor(t){
+  var runs=(t||"").match(/`{3,}/g),n=3;
+  if(runs) runs.forEach(function(r){ if(r.length>=n) n=r.length+1; });
+  return "`".repeat(n);
+}
+function parseRepo(v){
+  v=(v||"").trim().replace(/\.git$/,"").replace(/\/+$/,"");
+  if(!v) return null;
+  var m=v.match(/github\.com\/([^\/\s]+)\/([^\/\s]+?)(?:\/tree\/(.+))?$/i);
+  if(m) return {owner:m[1],repo:m[2],branch:m[3]||""};
+  m=v.match(/^([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+?)(?:\/tree\/(.+))?$/);
+  if(m) return {owner:m[1],repo:m[2],branch:m[3]||""};
+  return null;
+}
+/* == dom layer below — needs a browser == */
+var state={owner:"",repo:"",branch:"",files:[],selected:[],cache:{},budget:32000,fetching:{},loading:false};
+var $=function(id){return document.getElementById(id)};
+function showStatus(msg,type){var el=$("status");el.textContent=msg;el.className="status show "+(type||"info")}
+function toast(msg){var t=$("toast");t.textContent=msg;t.classList.add("show");setTimeout(function(){t.classList.remove("show")},1800)}
+/* Branch-safe URL pieces: branches with slashes (feature/x) must keep their
+   slashes — encodeURIComponent on the whole branch breaks the URL. */
+function encBranch(){return state.branch.split("/").map(encodeURIComponent).join("/")}
+function blobUrl(path,lines){var enc=path.split("/").map(encodeURIComponent).join("/");var base="https://github.com/"+state.owner+"/"+state.repo+"/blob/"+encBranch()+"/"+enc; return lines>0?base+"#L1-L"+lines:base}
+/* Relative hrefs keep both doors working: /picker on localhost and
+   /gitparts/picker through the funnel (the server strips its prefix). */
+function stripLinkHref(){return "https://macbook-air-1.tailcb5639.ts.net/gitparts/"+state.owner+"/"+state.repo}
+function usedTokens(){return state.selected.reduce(function(s,p){var c=state.cache[p];return s+(c?c.tokens:0)},0)}
+function renderBudget(){
+  var used=usedTokens(),b=state.budget,over=used>b;
+  $("usedTokens").textContent=fmt(used); $("budgetLabel").textContent=fmt(b);
+  $("remainingLabel").textContent= over? fmt(used-b)+" over" : fmt(b-used)+" left";
+  $("barFill").style.width=Math.min(100, b? (used/b*100):0)+"%";
+  $("barWrap").className="bar"+(over?" over":"");
+  $("budgetWarn").style.display=over?"block":"none";
+  var has=state.selected.length>0;
+  $("copyBtn").disabled=!has||over; $("downloadBtn").disabled=!has||over; $("previewBtn").disabled=!has;
+  $("clearAllBtn").disabled=!has;
+  $("queueCount").textContent=state.selected.length+" picked";
+}
+function renderFiles(){
+  var q=($("searchInput").value||"").toLowerCase().trim();
+  var list=state.files.filter(function(f){return !q||f.path.toLowerCase().indexOf(q)!==-1});
+  $("fileCount").textContent=fmt(list.length)+" files";
+  var el=$("fileList");
+  if(!state.files.length){return}
+  if(!list.length){el.innerHTML='<div class="empty"><strong>No matches</strong>Try a different filter.</div>';return}
+  el.innerHTML="";
+  list.slice(0,800).forEach(function(f){
+    var added=state.selected.indexOf(f.path)!==-1;
+    var bin=isLikelyBinary(f.path,f.size);
+    var row=document.createElement("div");row.className="filerow"+(added?" added":"");
+    row.innerHTML='<button class="addbtn" aria-label="Add file">'+(added?"✓":"+")+'</button><div class="path"><b></b><span></span></div>';
+    row.querySelector("b").textContent=f.path;
+    row.querySelector("span").textContent=fmt(f.size)+" B · ~"+fmt(estTokensFromSize(f.size))+" tokens"+(bin?" · binary / too large":"");
+    var btn=row.querySelector(".addbtn"); btn.disabled=added||bin;
+    btn.addEventListener("click",function(){addFile(f)});
+    el.appendChild(row);
+  });
+  if(list.length>800){var more=document.createElement("div");more.className="filerow";more.innerHTML='<div class="path"><span>Showing first 800 matches — filter to narrow down.</span></div>';el.appendChild(more)}
+}
+function renderQueue(){
+  var q=$("queue"); q.innerHTML="";
+  if(!state.selected.length){q.innerHTML='<div class="empty"><strong>Nothing picked yet</strong>Add files from the list on the left. Every pick keeps a link back to its exact path and lines.</div>';renderBudget();return}
+  state.selected.forEach(function(path,idx){
+    var c=state.cache[path]||{lines:0,tokens:0};
+    var item=document.createElement("div");item.className="qitem";item.draggable=true;item.dataset.path=path;item.dataset.idx=idx;
+    item.innerHTML='<span class="handle" title="Drag to reorder">⠿</span><span class="num">'+(idx+1)+'</span><div class="qmain"><b></b><div class="qmeta"></div></div><div class="qactions"><button class="iconbtn" data-act="up" aria-label="Move up">↑</button><button class="iconbtn" data-act="down" aria-label="Move down">↓</button><button class="iconbtn" data-act="remove" aria-label="Remove">×</button></div>';
+    item.querySelector("b").textContent=path;
+    var url=blobUrl(path,c.lines);
+    var qmeta=item.querySelector(".qmeta");
+    qmeta.textContent=(c.lines?('Lines 1–'+fmt(c.lines)):'empty file')+' · ~'+fmt(c.tokens)+' tokens · ';
+    var aEl=document.createElement("a"); aEl.href=url; aEl.target="_blank"; aEl.rel="noopener"; aEl.textContent=state.owner+'/'+state.repo+' · '+path+'#L1-L'+c.lines; qmeta.appendChild(aEl);
+    item.querySelectorAll(".iconbtn").forEach(function(b){
+      b.addEventListener("click",function(){
+        var act=b.dataset.act;
+        if(act==="remove"){state.selected=state.selected.filter(function(p){return p!==path});}
+        if(act==="up"&&idx>0){var t=state.selected[idx-1];state.selected[idx-1]=path;state.selected[idx]=t;}
+        if(act==="down"&&idx<state.selected.length-1){var t2=state.selected[idx+1];state.selected[idx+1]=path;state.selected[idx]=t2;}
+        renderQueue();renderFiles();
+      });
+    });
+    item.addEventListener("dragstart",function(e){item.classList.add("dragging");e.dataTransfer.setData("text/plain",path);e.dataTransfer.effectAllowed="move"});
+    item.addEventListener("dragend",function(){item.classList.remove("dragging");document.querySelectorAll(".qitem").forEach(function(x){x.classList.remove("dragover")})});
+    item.addEventListener("dragover",function(e){e.preventDefault();item.classList.add("dragover")});
+    item.addEventListener("dragleave",function(){item.classList.remove("dragover")});
+    item.addEventListener("drop",function(e){e.preventDefault();var from=e.dataTransfer.getData("text/plain");var fromIdx=state.selected.indexOf(from);var toIdx=state.selected.indexOf(path);if(fromIdx>-1&&toIdx>-1&&fromIdx!==toIdx){state.selected.splice(fromIdx,1);state.selected.splice(toIdx,0,from);renderQueue();}});
+    q.appendChild(item);
+  });
+  renderBudget();
+}
+async function addFile(f){
+  if(state.selected.indexOf(f.path)!==-1) return;
+  if(state.fetching[f.path]){ showStatus("Already fetching "+f.path+" — one sec.","info"); return; }
+  state.fetching[f.path]=true;
+  showStatus("Fetching "+f.path+" …","info");
+  var ac=(typeof AbortController!=="undefined")?new AbortController():null;
+  var to=ac?setTimeout(function(){ac.abort()},20000):null;
+  try{
+    var enc=f.path.split("/").map(encodeURIComponent).join("/");
+    var res=await fetch("https://raw.githubusercontent.com/"+state.owner+"/"+state.repo+"/"+encBranch()+"/"+enc, ac?{signal:ac.signal}:undefined);
+    if(!res.ok) throw new Error(res.status===403?"HTTP 403 — GitHub rate limit (about 60/hr)":"HTTP "+res.status);
+    var text=await res.text();
+    if(looksBinary(text)) throw new Error("binary or non-text content");
+    var lines=text.replace(/\n$/,"").split("\n").length; if(text==="") lines=0;
+    state.cache[f.path]={content:text,lines:lines,tokens:tokensFromText(text)};
+    state.selected.push(f.path);
+    showStatus("Added "+f.path+" — "+(lines?fmt(lines)+" lines":"empty file")+", ~"+fmt(state.cache[f.path].tokens)+" tokens.","ok");
+    renderQueue();renderFiles();
+    if(usedTokens()>state.budget) toast("Over budget — trim before export");
+  }catch(e){
+    var why=(e&&e.name==="AbortError")?"timed out (20s)":(e&&e.message||"unknown error");
+    showStatus("Couldn’t fetch "+f.path+" ("+why+"). It may be binary, too large, or rate-limited.","err");
+  }finally{
+    if(to)clearTimeout(to);
+    delete state.fetching[f.path];
+  }
+}
+async function loadRepo(){
+  var parsed=parseRepo($("repoInput").value);
+  if(!parsed){showStatus("That doesn’t look like a GitHub repo. Paste https://github.com/owner/repo or owner/repo.","err");return}
+  if(state.loading) return;  // Enter key can fire while the button is disabled
+  state.loading=true;
+  $("loadBtn").disabled=true; $("loadBtn").textContent="Loading…";
+  state.selected=[];state.cache={};renderQueue();
+  try{
+    var infoRes=await fetch("https://api.github.com/repos/"+parsed.owner+"/"+parsed.repo);
+    if(infoRes.status===404) throw new Error("Repo not found. If it exists, it’s private — private repos are out of scope for this version.");
+    if(infoRes.status===403) throw new Error("GitHub rate limit hit. Wait a bit and try again.");
+    if(!infoRes.ok) throw new Error("GitHub returned HTTP "+infoRes.status);
+    var info=await infoRes.json();
+    if(info.private) throw new Error("That repo is private — this picker is for public repos only.");
+    state.owner=info.owner.login; state.repo=info.name; state.branch=parsed.branch||info.default_branch||"main";
+    var treeRes=await fetch("https://api.github.com/repos/"+state.owner+"/"+state.repo+"/git/trees/"+encBranch()+"?recursive=1");
+    if(!treeRes.ok) throw new Error("Couldn’t load the file tree (HTTP "+treeRes.status+").");
+    var tree=await treeRes.json();
+    state.files=(tree.tree||[]).filter(function(x){return x.type==="blob"}).map(function(x){return {path:x.path,size:x.size||0}}).sort(function(a,b){return a.path.localeCompare(b.path)});
+    var rm=$("repoMeta"); rm.style.display="block"; rm.textContent="";
+    var strong=document.createElement("strong"); strong.textContent=state.owner+'/'+state.repo; rm.appendChild(strong);
+    rm.appendChild(document.createTextNode(' · branch '));
+    var bSpan=document.createElement("span"); bSpan.className="mono"; bSpan.textContent=state.branch; rm.appendChild(bSpan);
+    rm.appendChild(document.createTextNode(' · '+fmt(state.files.length)+' files'));
+    if(tree.truncated){ var warn=document.createElement("span"); warn.style.cssText="color:var(--amber);font-weight:600"; warn.textContent=' · Tree truncated by GitHub — very large repo, some files may be missing.'; rm.appendChild(warn); }
+    rm.appendChild(document.createTextNode(' · '));
+    var ghLink=document.createElement("a"); ghLink.href=info.html_url; ghLink.target="_blank"; ghLink.rel="noopener"; ghLink.textContent="View on GitHub ↗"; rm.appendChild(ghLink);
+    rm.appendChild(document.createTextNode(' · '));
+    /* the other face: one relative hop to the judged strip */
+    var strip=document.createElement("a"); strip.href=stripLinkHref(); strip.textContent="auto-strip this repo →"; strip.title="gitparts judged strip — stealable parts with file:line proof"; rm.appendChild(strip);
+    $("fileHint").textContent="From "+state.owner+"/"+state.repo+" · tap + to add a file to your bundle.";
+    $("searchInput").disabled=false; $("clearSearchBtn").disabled=false;
+    showStatus("Loaded "+fmt(state.files.length)+" files from "+state.owner+"/"+state.repo+" ("+state.branch+"). Pick files to build your bundle.","ok");
+    renderFiles();
+  }catch(e){ showStatus(e.message,"err"); state.files=[]; }
+  state.loading=false;
+  $("loadBtn").disabled=false; $("loadBtn").textContent="Load files →";
+}
+function buildBundle(){
+  var used=usedTokens();
+  var out=[];
+  out.push("# Bundle — "+state.owner+"/"+state.repo);
+  out.push("");
+  out.push("Repository: https://github.com/"+state.owner+"/"+state.repo);
+  out.push("Branch: "+state.branch);
+  out.push("Files: "+state.selected.length+" · Tokens: ~"+fmt(used)+" / "+fmt(state.budget)+" budget");
+  out.push("Generated: "+new Date().toISOString());
+  out.push("");
+  out.push("---");
+  state.selected.forEach(function(path,i){
+    var c=state.cache[path]; var url=blobUrl(path,c.lines);
+    var fence=fenceFor(c.content);
+    out.push("");
+    out.push("## "+(i+1)+". `"+path+"`");
+    out.push("");
+    out.push("Source: ["+path+"]("+url+")"+(c.lines?(" · Lines 1–"+fmt(c.lines)):" · empty file")+" · ~"+fmt(c.tokens)+" tokens");
+    out.push("");
+    out.push(fence+langFromPath(path));
+    out.push(c.content.replace(/\n$/,""));
+    out.push(fence);
+  });
+  out.push("");
+  return out.join("\n");
+}
+$("loadBtn").addEventListener("click",loadRepo);
+$("repoInput").addEventListener("keydown",function(e){if(e.key==="Enter")loadRepo()});
+document.querySelectorAll("[data-example]").forEach(function(b){b.addEventListener("click",function(){$("repoInput").value=b.dataset.example;loadRepo()})});
+$("searchInput").addEventListener("input",renderFiles);
+$("clearSearchBtn").addEventListener("click",function(){$("searchInput").value="";renderFiles()});
+$("clearAllBtn").addEventListener("click",function(){state.selected=[];renderQueue();renderFiles();$("preview").style.display="none"});
+function syncBudget(v){var n=Math.max(500,Math.min(1000000,parseInt(v,10)||32000));state.budget=n;$("budgetRange").value=Math.min(200000,n);$("budgetInput").value=n;renderBudget(); if(state.selected.length) $("preview").textContent=buildBundle()}
+$("budgetRange").addEventListener("input",function(e){syncBudget(e.target.value)});
+$("budgetInput").addEventListener("change",function(e){syncBudget(e.target.value)});
+$("previewBtn").addEventListener("click",function(){var p=$("preview");var show=p.style.display==="none";p.style.display=show?"block":"none";if(show)p.textContent=buildBundle();$("previewBtn").textContent=show?"Hide preview":"Preview"});
+/* Clipboard: navigator.clipboard is secure-context-only — this page is plain
+   http on the tailnet IP, so fall back to execCommand (same fix as the parts
+   page's copy button). Preview display is the last resort. */
+$("copyBtn").addEventListener("click",async function(){
+  var txt=buildBundle();
+  var done=function(){toast("Bundle copied — "+state.selected.length+" files, ~"+fmt(usedTokens())+" tokens")};
+  try{
+    if(navigator.clipboard&&window.isSecureContext){await navigator.clipboard.writeText(txt);done();return;}
+  }catch(e){}
+  var ta=document.createElement("textarea");
+  ta.value=txt; ta.style.position="fixed"; ta.style.opacity="0";
+  document.body.appendChild(ta); ta.focus(); ta.select();
+  try{ document.execCommand("copy"); done(); }
+  catch(e){
+    var p=$("preview"); p.style.display="block"; p.textContent=txt;
+    toast("Copy blocked — bundle shown in preview");
+  }
+  document.body.removeChild(ta);
+});
+$("downloadBtn").addEventListener("click",function(){var blob=new Blob([buildBundle()],{type:"text/markdown"});var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=state.repo+"-bundle.md";document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(a.href)},2000);toast("Downloaded "+state.repo+"-bundle.md")});
+renderBudget();
+</script>
+</body>
+</html>
